@@ -89,6 +89,9 @@ double locomotion_BR_vel = 0;
 
 //extended variable
 unsigned long last_timer;
+double last_timer_speed,t_speed;
+double last_timer_pub,t_pub;
+double control_period;
 int32_t rotInFL = 0;
 int32_t rotInFR = 0;
 int32_t rotInBL = 0;

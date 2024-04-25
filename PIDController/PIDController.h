@@ -12,13 +12,24 @@ public:
     double clamp(double val, double min, double max);
     double compute_action(double target, double feedback, float ff);
     void setActive(bool command_active);
-     
+    double filter_Kalman(double v1);
+    float errorIntegral, errorDerivative;
+    double err,targett;
+
 
 private:
     /// ci = -ai/a0, di = bi/a0 in discrete-time PID
-    double c1_, c2_, d0_, d1_, d2_;
+    double Kp,Ki,Kd;
     double prev_err_[2], prev_out_[2];
+    double prev_ril_err[3];
+    unsigned long samplingTime;
     bool is_active_;
+
+    //Kalman Filter
+    float v1Filt, v1Prev;
+    float kalmanFilterData;
+    float Xt, Xt_update, Xt_prev, Pt, Pt_update, Pt_prev, Kt, R, Q;
+
 };
 
 #endif

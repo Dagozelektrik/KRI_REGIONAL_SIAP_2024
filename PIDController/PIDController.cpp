@@ -1,86 +1,68 @@
+
 #include "PIDController.h"
 
 
 PIDController::PIDController()
 {
-    c1_ = 0.;
-    c2_ = 0.;
-    d0_ = 0.;
-    d1_ = 0.;
-    d2_ = 0.;
+    //INI MUNGKIN GUNA
     prev_err_[0] = 0.;
     prev_err_[1] = 0.;
     prev_out_[0] = 0.;
     prev_out_[1] = 0.;
+    double prev_ril_err[3] = {0.,0.,0.};
 }
 
+//FC= filter coeff, cp tuh 
 void PIDController::init(int mode, float kp, float ti, float td, float ff, float fc, float cp, bool is_active)
 {
-    c1_ = 0.;
-    c2_ = 0.;
-    d0_ = 0.;
-    d1_ = 0.;
-    d2_ = 0.;
-    double Kp = kp;
-    double Kd = Kp*td;
-    double KiTs = Kp/ti*cp;
+    //INI GANTI JADI KP KI KD
+    Kp = kp;
+    Kd = td;
+    Ki = ti;
+    errorIntegral =0; 
+    errorDerivative  = 0;
+    err = 0;
+    samplingTime = 5;//isi sama sampling time, seberapa lama compute actio dipanggil 
+    prev_ril_err[0] = 0.;
+    prev_ril_err[1] = 0.;
+    prev_ril_err[2] = 0.;    
+    //CARI TAU DEFINE MODE DIMANA, APAKAH DIKIRIM DARI COMPUTER, MODE 1 PI, MODE 2 PID 
+    //BUAT BEBERAPA MODE PI, PID, INI KAYANYA BUAT NGITUNGIN KP KI KD LANGSUNG DECLARE AJA 
     
+    v1Filt = 0;
+    v1Prev = 0;
+    R = 100;
+    Q = 1;
+    Pt_prev = 1;
+
+    //INI PI 
     if (mode == 1) {
-        c1_ = 1.;
-        d0_ = Kp + KiTs;
-        d1_ = -Kp;
-        
-        
-        
-        is_active_ = is_active;
-        }
-    else if (mode == 0) {
-        double Kp = kp;
-        d0_ = Kp;
-        
+        Kp = Kp;
+        Ki = Ki; 
+  
         is_active_ = is_active;
     }
-    else if (mode == 2) {
-        double Kp = kp;
-        double KdN = Kp*td*fc;
-        double _1_NTs1 = 1 / (1+fc*cp);
-        c1_ = _1_NTs1;
-        d0_ = Kp + KdN*_1_NTs1;
-        d1_ = -(Kp + KdN)*_1_NTs1;
+
+
+    // INI MAU PID 
+    if(mode==2){
         
-        is_active_ = is_active;
+        Kp = Kp;
+        Ki = Ki;
+        Kd = Kd;
+        is_active_ = is_active; 
     }
-    else if (mode == 3) {
-        double ki = kp / ti;
-        double kd = kp * td;
-//        double c1 =  2+fc*cp;
-//        double c2 = -2+fc*cp;
-//        c1_ = (c1-c2)/c1;
-//        c2_ = c2/c1;
-//        d0_ = kp+0.5*ki*cp+2*kd*fc/c1;
-//        d1_ = kp*(c2-c1)/c1+0.5*ki*cp*(c1+c2)/c1-4*kd*fc/c1;
-//        d2_ = -kp*c2/c1+0.5*ki*cp*c2/c1+2*kd*fc/c1;
-        
-        double c1 = (4/cp/cp)*(kp+kd*fc);
-        double c2 = 2/cp*(kp*fc+ki);
-        double c3 = ki*fc;
-        double c4 = 4/cp/cp+2*fc/cp;
-        double c5 = -8/cp/cp;
-        double c6 = 4/cp/cp-2*fc/cp;
-        
-        d0_ = (c1+c2+c3)/c4;
-        d1_ = (-2*c1+2*c3)/c4;
-        d2_ = (c1-c2+c3)/c4;
-        c1_ = c5/c4;
-        c2_ = c6/c4;
+
         prev_err_[0] = 0.;
         prev_err_[1] = 0.;
         prev_out_[0] = 0.;
         prev_out_[1] = 0.;
         is_active_ = is_active;
     }
-}
 
+
+
+//UNTUK CLAMPING, GA DIUBAH
 double PIDController::clamp(double val, double min, double max)
 {
     if (val >= max)
@@ -96,33 +78,89 @@ double PIDController::clamp(double val, double min, double max)
         return val;
     }
 }
+
+
 double PIDController::compute_action(double target, double feedback, float ff)
 {
-    double err = target - feedback;
-    double out = 0.;
+    //feedback = filter_Kalman(feedback);
+    double ril_err = target - feedback; //ITUNG ERROR
+
+    //MOVING AVERAGE 
+    //err = (prev_ril_err[1] + prev_ril_err[0] + ril_err) / 3;
+
+    //KALMAN FILTER 
+    err = ril_err;
+    targett = target;
+
+    double out = 0.; 
     
+    errorIntegral = errorIntegral + err;
+    errorDerivative = (prev_err_[0] - err)/samplingTime;
+    
+    errorDerivative = clamp(errorDerivative, -5,5);
+    
+
+    //NGITUNG KELUARAN, TAPI PAKE DISKRIT
     if(is_active_)
     {
-        out = c1_ * prev_out_[0] + c2_ * prev_out_[1] + d0_ * err + d1_ * prev_err_[0] + d2_ * prev_err_[1];
+        out = errorIntegral * Ki + errorDerivative * Kd + err * Kp;
+
+        //BEKAS DISKRIT 
+        //out = c1_ * prev_out_[0] + c2_ * prev_out_[1] + d0_ * err + d1_ * prev_err_[0] + d2_ * prev_err_[1];
+        
+        //NGIRIM OUTPUT 
         out = clamp(out, -1., 1.);
     }
 
+    //ITUNG PREVIOUS ERROR 
+    prev_ril_err[1] = prev_ril_err[0];
+    prev_ril_err[0] = ril_err;
+    
     prev_err_[1] = prev_err_[0];
     prev_err_[0] = err;
     prev_out_[1] = prev_out_[0];
     prev_out_[0] = out;
 
+    //INI KELUARAN RETURNNYA, HARUSNYA NGGA DIUBAH 
     if(is_active_) {
         if (target == 0) {
             return 0.0;
         }
-        else return clamp(out + ff * target, -1., 1.);
+        else return clamp(out + ff * target, -1., 1.); //FF TUH FEEDFORWARD, -1 SAMA 1 TUH CLAMPING MIN MAX
         }
     else { 
         return 0.0;
     }
 }
 
+
+// INI BIARIN AJA 
 void PIDController::setActive(bool command_active) {
     is_active_ = command_active;
 }
+
+double PIDController::filter_Kalman(double v1){
+
+    //WITH LOWPASS FILTER 
+    // v1Filt = 0.854*v1Filt + 0.0728*(v1) + 0.0728*v1Prev;
+    // v1Prev = v1;
+    
+    //WITHOUT LOWPASS FILTER 
+    v1Filt = v1;
+
+    // kalman
+    Xt_update = Xt_prev;
+    Pt_update = Pt_prev + Q;
+    Kt = Pt_update / (Pt_update + R);
+    Xt = Xt_update + (Kt * (v1Filt - Xt_update));
+    Pt = (1 - Kt) * Pt_update;
+    Xt_prev = Xt;
+    Pt_prev = Pt;
+    kalmanFilterData = Xt;
+    v1 = Xt;
+
+    return v1;
+ }
+
+
+
