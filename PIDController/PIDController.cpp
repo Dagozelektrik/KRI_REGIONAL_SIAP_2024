@@ -1,8 +1,12 @@
-#include "PIDController.h"
 
+#ifndef PIDCONTROLLER_H
+#define PIDCONTROLLER_H
+#include <iostream>
+#include <string>
 
-PIDController::PIDController()
+class PIDController
 {
+
     c1_ = 0.;
     c2_ = 0.;
     d0_ = 0.;
@@ -126,3 +130,4 @@ double PIDController::compute_action(double target, double feedback, float ff)
 void PIDController::setActive(bool command_active) {
     is_active_ = command_active;
 }
+
