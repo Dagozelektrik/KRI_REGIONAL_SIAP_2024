@@ -97,6 +97,10 @@ int main()
     while (true)
     {
         //do nothing
+        // mainProcess();
+        // getCompass();
+        // controlCalculation();
+        // kickTarget();
     }
 }
 
@@ -116,6 +120,8 @@ void initPIDController()
     ControllerFL.init(PIDMode, kpFL, tiFL, tdFL, ffFL, fcFL, cp, true);
     ControllerBR.init(PIDMode, kpBR, tiBR, tdBR, ffBR, fcBR, cp, true);
     ControllerBL.init(PIDMode, kpBL, tiBL, tdBL, ffBL, fcBL, cp, true);
+    last_timer_speed = clock_ms()-0.005;
+    last_timer_pub = clock_ms()-0.005;
 }
 void assignPIDParam()
 {
@@ -279,10 +285,13 @@ void mainProcess()
     }
 }
 
+
+float x_pos = 0;
+float y_pos = 0;
 // PID Calculation to generate PWM
 void controlCalculation()
 {
-
+    last_timer_speed = clock_ms()-0.005;
     while (1)
     {
 //        HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_14);
@@ -303,17 +312,30 @@ void controlCalculation()
         motorPulseBL += rotInBL;
         motorPulseBR += rotInBR; 
         
+        x_pos += (((-rotInFL * 2 * PI * WHEEL_RADIUS )/ WHEEL_PPR_1) + ((rotInFR * 2 * PI * WHEEL_RADIUS )/ WHEEL_PPR_2) - ((rotInBL * 2 * PI * WHEEL_RADIUS) / WHEEL_PPR_3) +  ((rotInBR * 2 * PI * WHEEL_RADIUS) / WHEEL_PPR_4))*0.353553391;
+        y_pos +=  (((rotInFL * 2 * PI * WHEEL_RADIUS) / WHEEL_PPR_1) + ((rotInFR * 2 * PI * WHEEL_RADIUS )/ WHEEL_PPR_2) - ((rotInBL * 2 * PI * WHEEL_RADIUS) / WHEEL_PPR_3) -  ((rotInBR * 2 * PI * WHEEL_RADIUS )/ WHEEL_PPR_4))*0.353553391;
         cur_locomotion_L -= temp_cur_locomotion_L;
         cur_locomotion_R -= temp_cur_locomotion_R;
         cur_locomotion_B -= temp_cur_locomotion_B;
 
 //        xSemaphorePulseData.release();
 
-        // Calculate Feedback Velocity from pulses
-        locomotion_FL_vel = rotInFL * 2 * PI * WHEEL_RADIUS / (WHEEL_PPR_1 * CONTROL_COMPUTE_PERIOD);
-        locomotion_FR_vel = rotInFR * 2 * PI * WHEEL_RADIUS / (WHEEL_PPR_2 * CONTROL_COMPUTE_PERIOD);
-        locomotion_BL_vel = rotInBL * 2 * PI * WHEEL_RADIUS / (WHEEL_PPR_3 * CONTROL_COMPUTE_PERIOD);
-        locomotion_BR_vel = rotInBR * 2 * PI * WHEEL_RADIUS / (WHEEL_PPR_4 * CONTROL_COMPUTE_PERIOD);
+        // // Calculate Feedback Velocity from pulses (using fixed time)
+        // locomotion_FL_vel = rotInFL * 2 * PI * WHEEL_RADIUS / (WHEEL_PPR_1 * CONTROL_COMPUTE_PERIOD);
+        // locomotion_FR_vel = rotInFR * 2 * PI * WHEEL_RADIUS / (WHEEL_PPR_2 * CONTROL_COMPUTE_PERIOD);
+        // locomotion_BL_vel = rotInBL * 2 * PI * WHEEL_RADIUS / (WHEEL_PPR_3 * CONTROL_COMPUTE_PERIOD);
+        // locomotion_BR_vel = rotInBR * 2 * PI * WHEEL_RADIUS / (WHEEL_PPR_4 * CONTROL_COMPUTE_PERIOD);
+        // Calculate Feedback Velocity from pulses (using adaptive time)
+        t_speed = clock_ms();
+        control_period = (t_speed - last_timer_speed)/1000;
+        //control_period = (double) (last_timer_speed - t_speed)/1000;
+        last_timer_speed = t_speed;
+
+        locomotion_FL_vel = rotInFL * 2 * PI * WHEEL_RADIUS / (WHEEL_PPR_1 * control_period);
+        locomotion_FR_vel = rotInFR * 2 * PI * WHEEL_RADIUS / (WHEEL_PPR_2 * control_period);
+        locomotion_BL_vel = rotInBL * 2 * PI * WHEEL_RADIUS / (WHEEL_PPR_3 * control_period);
+        locomotion_BR_vel = rotInBR * 2 * PI * WHEEL_RADIUS / (WHEEL_PPR_4 * control_period);
+        
 
         // Compute action drom PIDController to determine PWM
         locomotion_FR_target_rate = ControllerFR.compute_action(locomotion_FR_target_vel, locomotion_FR_vel, ffFR);
@@ -327,14 +349,22 @@ void controlCalculation()
         locomotionMotorBR.setpwm(-locomotion_BR_target_rate);    
         locomotionMotorBL.setpwm(-locomotion_BL_target_rate); 
 
+        //NGEPRINT ERROR
+        char pass_param[80];
+        snprintf(pass_param, 80, "Accumulated Error : %f, Period : %lf, Speed: %lf", ControllerFL.errorIntegral, control_period, locomotion_FL_vel);
+        // snprintf(pass_param, 50, "X_POS : %f, Y_POS : %f", x_pos, y_pos);
+        nh.loginfo(pass_param);   
+
         Thread::wait(5);
     }
 }
 
 void moveDribbler()
 {
-    dribblerMotorL.setpwm(dribbler_L_target_rate);
+    dribblerMotorL.setpwm(-dribbler_L_target_rate);
     dribblerMotorR.setpwm(-dribbler_R_target_rate);
+    // dribblerMotorL.setpwm(-0.3);
+    // dribblerMotorR.setpwm(0.3);
 }
 
 void moveLever()
@@ -358,7 +388,7 @@ void moveLever()
 
 void publishMessage()
 {
-
+    
     // Publish position data//
     stateMsg.data.base_motor_1_pulse_delta = motorPulseFL;
     stateMsg.data.base_motor_2_pulse_delta = motorPulseFR;
@@ -375,7 +405,10 @@ void publishMessage()
     stateMsg.data.dribbler_potentio_l_reading = 0.0;
     stateMsg.data.dribbler_potentio_r_reading = 0.0;
 
-    stateMsg.data.ir_reading = ball_distance;
+    // Time Stamp
+    stateMsg.data.ir_reading = (t_speed - last_timer_pub);
+    last_timer_pub = t_speed;
+    //stateMsg.data.ir_reading = ball_distance;
     stateMsg.data.compass_reading = theta_result;
 
     stateMsg.header.stamp = nh.now();
