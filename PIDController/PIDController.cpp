@@ -1,18 +1,7 @@
 #include "PIDController.h"
 
 #gacooorrrrr
-PIDController::PIDController()
-{
-    c1_ = 0.;
-    c2_ = 0.;
-    d0_ = 0.;
-    d1_ = 0.;
-    d2_ = 0.;
-    prev_err_[0] = 0.;
-    prev_err_[1] = 0.;
-    prev_out_[0] = 0.;
-    prev_out_[1] = 0.;
-}
+
 
 void PIDController::init(int mode, float kp, float ti, float td, float ff, float fc, float cp, bool is_active)
 {
