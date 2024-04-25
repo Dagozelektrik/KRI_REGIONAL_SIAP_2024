@@ -13,7 +13,7 @@ PIDController::PIDController()
     prev_out_[0] = 0.;
     prev_out_[1] = 0.;
 }
-
+#gacoorr cor cor
 void PIDController::init(int mode, float kp, float ti, float td, float ff, float fc, float cp, bool is_active)
 {
     c1_ = 0.;
