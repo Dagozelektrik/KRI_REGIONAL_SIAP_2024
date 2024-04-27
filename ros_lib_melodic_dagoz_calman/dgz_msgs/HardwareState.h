@@ -38,6 +38,8 @@ namespace dgz_msgs
       _compass_reading_type compass_reading;
       typedef double _ir_reading_type;
       _ir_reading_type ir_reading;
+      typedef int8_t _delta_timestamp_type;
+      _delta_timestamp_type delta_timestamp;
 
     HardwareState():
       base_motor_1_pulse_delta(0),
@@ -52,11 +54,12 @@ namespace dgz_msgs
       dribbler_potentio_l_reading(0),
       dribbler_potentio_r_reading(0),
       compass_reading(0),
-      ir_reading(0)
+      ir_reading(0),
+      delta_timestamp(0)
     {
     }
 
-    virtual int serialize(unsigned char *outbuffer) const
+    virtual int serialize(unsigned char *outbuffer) const 
     {
       int offset = 0;
       union {
@@ -205,10 +208,17 @@ namespace dgz_msgs
       *(outbuffer + offset + 6) = (u_ir_reading.base >> (8 * 6)) & 0xFF;
       *(outbuffer + offset + 7) = (u_ir_reading.base >> (8 * 7)) & 0xFF;
       offset += sizeof(this->ir_reading);
+      union {
+        int8_t real;
+        uint8_t base;
+      } u_delta_timestamp;
+      u_delta_timestamp.real = this->delta_timestamp;
+      *(outbuffer + offset + 0) = (u_delta_timestamp.base >> (8 * 0)) & 0xFF;
+      offset += sizeof(this->delta_timestamp);
       return offset;
     }
 
-    virtual int deserialize(unsigned char *inbuffer)
+    virtual int deserialize(unsigned char *inbuffer) 
     {
       int offset = 0;
       union {
@@ -370,11 +380,19 @@ namespace dgz_msgs
       u_ir_reading.base |= ((uint64_t) (*(inbuffer + offset + 7))) << (8 * 7);
       this->ir_reading = u_ir_reading.real;
       offset += sizeof(this->ir_reading);
+      union {
+        int8_t real;
+        uint8_t base;
+      } u_delta_timestamp;
+      u_delta_timestamp.base = 0;
+      u_delta_timestamp.base |= ((uint8_t) (*(inbuffer + offset + 0))) << (8 * 0);
+      this->delta_timestamp = u_delta_timestamp.real;
+      offset += sizeof(this->delta_timestamp);
      return offset;
     }
 
-    virtual const char * getType() { return "dgz_msgs/HardwareState"; };
-    virtual const char * getMD5() { return "98eb1d85bcb259a05db1004f284168b1"; };
+    virtual const char * getType()  { return "dgz_msgs/HardwareState"; };
+    virtual const char * getMD5()  { return "9c1e2373048a2c0e015f0d5e0e965cce"; };
 
   };
 

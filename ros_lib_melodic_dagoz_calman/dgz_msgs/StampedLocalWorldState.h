@@ -1,31 +1,31 @@
-#ifndef _ROS_dgz_msgs_StampedHardwareState_h
-#define _ROS_dgz_msgs_StampedHardwareState_h
+#ifndef _ROS_dgz_msgs_StampedLocalWorldState_h
+#define _ROS_dgz_msgs_StampedLocalWorldState_h
 
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
 #include "ros/msg.h"
 #include "std_msgs/Header.h"
-#include "dgz_msgs/HardwareState.h"
+#include "dgz_msgs/LocalWorldState.h"
 
 namespace dgz_msgs
 {
 
-  class StampedHardwareState : public ros::Msg
+  class StampedLocalWorldState : public ros::Msg
   {
     public:
       typedef std_msgs::Header _header_type;
       _header_type header;
-      typedef dgz_msgs::HardwareState _data_type;
+      typedef dgz_msgs::LocalWorldState _data_type;
       _data_type data;
 
-    StampedHardwareState():
+    StampedLocalWorldState():
       header(),
       data()
     {
     }
 
-    virtual int serialize(unsigned char *outbuffer) const
+    virtual int serialize(unsigned char *outbuffer) const override
     {
       int offset = 0;
       offset += this->header.serialize(outbuffer + offset);
@@ -33,7 +33,7 @@ namespace dgz_msgs
       return offset;
     }
 
-    virtual int deserialize(unsigned char *inbuffer)
+    virtual int deserialize(unsigned char *inbuffer) override
     {
       int offset = 0;
       offset += this->header.deserialize(inbuffer + offset);
@@ -41,8 +41,8 @@ namespace dgz_msgs
      return offset;
     }
 
-    virtual const char * getType() { return "dgz_msgs/StampedHardwareState"; };
-    virtual const char * getMD5() { return "57dcb40d6e936766db925c0c58ef4dea"; };
+    virtual const char * getType() override { return "dgz_msgs/StampedLocalWorldState"; };
+    virtual const char * getMD5() override { return "ce2cfbf6169d86ebb83aed3f0efbb65f"; };
 
   };
 

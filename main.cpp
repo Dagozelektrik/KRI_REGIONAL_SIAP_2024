@@ -405,10 +405,12 @@ void publishMessage()
     stateMsg.data.dribbler_potentio_l_reading = 0.0;
     stateMsg.data.dribbler_potentio_r_reading = 0.0;
 
-    // Time Stamp
-    stateMsg.data.ir_reading = (t_speed - last_timer_pub);
+    // Time Stamp Masih dalam interger
+    stateMsg.data.delta_timestamp = (int)(t_speed - last_timer_pub);
     last_timer_pub = t_speed;
-    //stateMsg.data.ir_reading = ball_distance;
+    //stateMsg.data.ir_reading = (t_speed - last_timer_pub);
+
+    stateMsg.data.ir_reading = ball_distance;
     stateMsg.data.compass_reading = theta_result;
 
     stateMsg.header.stamp = nh.now();
